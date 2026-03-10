@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Prospector AI - Toolbox Hub</title>
+    <title>Prospector AI - Master Scanner</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -19,7 +19,7 @@
         #analysis-window {
             position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
             background: rgba(0,20,0,0.9); color: #00ff00; padding: 15px;
-            border: 2px solid #00ff00; font-family: monospace; width: 70%;
+            border: 2px solid #00ff00; font-family: monospace; width: 75%;
             display: none; z-index: 101; text-align: center;
         }
         #hub-menu {
@@ -50,15 +50,15 @@
 
     <div id="hub-menu">
         <h2 style="color: gold;">⚒️ MASTER TOOLBOX</h2>
-        <a href="#" class="menu-link">🔍 Mineral Scanner (Active)</a>
+        <a href="#" class="menu-link" onclick="closeHub()">🔍 Mineral Scanner (Active)</a>
         <a href="https://jozzalee83.github.io/YOUR-MANUAL-REPO-NAME" class="menu-link">📖 Equipment Manuals</a>
         <a href="https://jozzalee83.github.io/YOUR-RC-GAME-REPO-NAME" class="menu-link">🚧 RC Construction Game</a>
-        <button class="close-btn" onclick="closeHub()">CLOSE</button>
+        <button class="close-btn" onclick="closeHub()">CLOSE HUB</button>
     </div>
 
     <div id="analysis-window">
-        <span id="title" style="color:gold; font-weight:bold;">SCANNING PIXELS...</span><br>
-        <span id="result">---</span>
+        <span id="title" style="color:gold; font-weight:bold;">SCANNING SPECTRUM...</span><br>
+        <span id="result" style="margin-top: 5px; display: block;">---</span>
     </div>
 
     <button class="scan-btn" onclick="startScan()">SCAN</button>
@@ -75,12 +75,12 @@
         function openHub() { document.getElementById('hub-menu').style.display = 'flex'; }
         function closeHub() { document.getElementById('hub-menu').style.display = 'none'; }
 
-        // --- SCANNER LOGIC ---
+        // --- UPGRADED SCANNER LOGIC ---
         function startScan() {
             const win = document.getElementById('analysis-window');
             const res = document.getElementById('result');
             win.style.display = 'block';
-            res.innerText = "CAPTURING SPECTRUM...";
+            res.innerText = "CAPTURING LIGHT SIGNATURE...";
 
             const video = document.querySelector('video');
             const canvas = document.getElementById('hidden-canvas');
@@ -90,20 +90,39 @@
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
             setTimeout(() => {
+                // Read the exact pixel in the middle of the green target ring
                 const pixelData = ctx.getImageData(canvas.width/2, canvas.height/2, 1, 1).data;
                 const r = pixelData[0], g = pixelData[1], b = pixelData[2];
+                const brightness = (r + g + b) / 3; // Calculate how dark the area is
 
-                if (r > 100 && g < 100) {
-                    res.innerHTML = "IRON OXIDE / GOSSAN<br>POTENTIAL: <span style='color:orange;'>HIGH</span>";
-                } else if (r > 180 && g > 180 && b > 180) {
-                    res.innerHTML = "QUARTZ / CALCITE<br>POTENTIAL: <span style='color:white;'>MEDIUM</span>";
-                } else if (g > r && g > b) {
-                    res.innerHTML = "VEGETATION DETECTED<br>ANALYZING PLANT HEALTH...";
+                // The Mineral Logic Engine
+                if (brightness < 40) {
+                    res.innerHTML = "AREA TOO DARK<br><span style='color:grey;'>USE FLASHLIGHT OR REPOSITION</span>";
+                } else if (r > 150 && g > 120 && b < 100) {
+                    res.innerHTML = "SIGNATURE: <span style='color:gold;'>NATIVE GOLD / SULPHIDES</span><br>POTENTIAL: <span style='color:red; font-weight:bold;'>EXTREME</span>";
+                } else if (r > 120 && g < 90 && b < 90) {
+                    res.innerHTML = "SIGNATURE: <span style='color:orange;'>IRONSTONE / GOSSAN</span><br>POTENTIAL: <span style='color:orange;'>HIGH INDICATOR</span>";
+                } else if (r > 200 && g > 200 && b > 200) {
+                    res.innerHTML = "SIGNATURE: <span style='color:white;'>QUARTZ VEIN</span><br>POTENTIAL: <span style='color:yellow;'>MEDIUM INDICATOR</span>";
+                } else if (g > r && g > 100 && b < 100) {
+                    res.innerHTML = "SIGNATURE: <span style='color:#00ff00;'>GREENSTONE / COPPER TRACE</span><br>POTENTIAL: MEDIUM";
                 } else {
-                    res.innerHTML = "GENERAL MINERAL DEPOSIT<br>CONTINUE PROSPECTING";
+                    res.innerHTML = `BASE ROCK DETECTED<br><span style='font-size:12px; color:grey;'>Raw RGB Data: R${r} G${g} B${b}</span>`;
                 }
-                setTimeout(() => { win.style.display = 'none'; }, 4000); 
-            }, 1500);
+                
+                // Hide window after 5 seconds
+                setTimeout(() => { win.style.display = 'none'; }, 5000); 
+            }, 1200);
+        }
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Offline Engine Active!'))
+                .catch(err => console.log('Offline Engine Failed: ', err));
+            });
         }
     </script>
 </body>
