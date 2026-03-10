@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Prospector AI - Vision</title>
+    <title>Prospector AI - Vision + Flash</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -9,7 +9,12 @@
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
             width: 90px; height: 90px; border-radius: 50%; border: 5px solid #00ff00;
             background: rgba(0, 255, 0, 0.2); color: #00ff00; font-weight: bold;
-            z-index: 100; font-family: monospace;
+            z-index: 100; font-family: monospace; font-size: 16px;
+        }
+        .flash-btn {
+            position: fixed; top: 10px; right: 10px; z-index: 100;
+            background: rgba(0,0,0,0.5); color: white; border: 2px solid white;
+            padding: 10px; font-family: monospace; border-radius: 5px; cursor: pointer;
         }
         #analysis-window {
             position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
@@ -26,6 +31,8 @@
         [ MODE: MINERAL SCAN ]
     </div>
 
+    <button id="flash-btn" class="flash-btn" onclick="toggleFlash()">🔦 FLASH: OFF</button>
+
     <div id="analysis-window">
         <span id="title" style="color:gold; font-weight:bold;">SCANNING PIXELS...</span><br>
         <span id="result">---</span>
@@ -41,13 +48,46 @@
     <canvas id="hidden-canvas" style="display:none;"></canvas>
 
     <script>
+        // --- FLASHLIGHT LOGIC ---
+        let torchOn = false;
+        async function toggleFlash() {
+            const video = document.querySelector('video');
+            if (!video) {
+                alert("Wait for camera to load!");
+                return;
+            }
+            try {
+                // Grab the camera feed
+                const track = video.srcObject.getVideoTracks()[0];
+                const capabilities = track.getCapabilities();
+                
+                // Check if the phone allows web flashlight access
+                if (!capabilities.torch) {
+                    alert("Flashlight API not supported on this browser/device.");
+                    return;
+                }
+                
+                // Toggle the torch
+                torchOn = !torchOn;
+                await track.applyConstraints({ advanced: [{ torch: torchOn }] });
+                
+                // Update button look
+                const btn = document.getElementById('flash-btn');
+                btn.innerText = torchOn ? "🔦 FLASH: ON" : "🔦 FLASH: OFF";
+                btn.style.background = torchOn ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.5)";
+                btn.style.color = torchOn ? "black" : "white";
+            } catch (err) {
+                alert("Could not activate flash: " + err.message);
+            }
+        }
+
+        // --- SCANNER LOGIC ---
         function startScan() {
             const win = document.getElementById('analysis-window');
             const res = document.getElementById('result');
             win.style.display = 'block';
             res.innerText = "CAPTURING SPECTRUM...";
 
-            // This grabs a frame from your camera
             const video = document.querySelector('video');
             const canvas = document.getElementById('hidden-canvas');
             canvas.width = video.videoWidth;
@@ -55,7 +95,6 @@
             const ctx = canvas.getContext('2d');
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Analysis Logic
             setTimeout(() => {
                 const pixelData = ctx.getImageData(canvas.width/2, canvas.height/2, 1, 1).data;
                 const r = pixelData[0], g = pixelData[1], b = pixelData[2];
@@ -69,33 +108,10 @@
                 } else {
                     res.innerHTML = "GENERAL MINERAL DEPOSIT<br>CONTINUE PROSPECTING";
                 }
-            }, 1500);
-        }
-    </script>
-</body>
-</html>
-
-
-    <script>
-        function scanSurroundings() {
-            const popup = document.getElementById('result-popup');
-            popup.style.display = 'block';
-            popup.innerText = "SENSING INDICATORS...";
-
-            // This simulates the AI "Scanning" the surroundings
-            setTimeout(() => {
-                const indicators = [
-                    "IRON OXIDE DETECTED - HIGH PROBABILITY",
-                    "QUARTZ FLOAT IDENTIFIED - CHECK UPSTREAM",
-                    "VEGETATION STRESS: MINERALIZED SOIL LIKELY",
-                    "SATELLITE STONE: CALCHOPYRITE TRACE"
-                ];
-                const randomMatch = indicators[Math.floor(Math.random() * indicators.length)];
-                popup.innerHTML = `<span style="color: gold;">RESULT:</span><br>${randomMatch}`;
                 
-                // Hide after 5 seconds
-                setTimeout(() => { popup.style.display = 'none'; }, 5000);
-            }, 2000);
+                // Auto-hide the popup after 4 seconds
+                setTimeout(() => { win.style.display = 'none'; }, 4000); 
+            }, 1500);
         }
     </script>
 </body>
