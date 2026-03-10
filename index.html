@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Prospector AI - Vision + Flash</title>
+    <title>Prospector AI - Toolbox Hub</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
@@ -11,9 +11,9 @@
             background: rgba(0, 255, 0, 0.2); color: #00ff00; font-weight: bold;
             z-index: 100; font-family: monospace; font-size: 16px;
         }
-        .flash-btn {
+        .hub-btn {
             position: fixed; top: 10px; right: 10px; z-index: 100;
-            background: rgba(0,0,0,0.5); color: white; border: 2px solid white;
+            background: rgba(0,0,0,0.8); color: gold; border: 2px solid gold;
             padding: 10px; font-family: monospace; border-radius: 5px; cursor: pointer;
         }
         #analysis-window {
@@ -21,6 +21,21 @@
             background: rgba(0,20,0,0.9); color: #00ff00; padding: 15px;
             border: 2px solid #00ff00; font-family: monospace; width: 70%;
             display: none; z-index: 101; text-align: center;
+        }
+        #hub-menu {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 200; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            font-family: monospace;
+        }
+        .menu-link {
+            background: #111; color: white; border: 1px solid #00ff00;
+            padding: 15px 30px; margin: 10px; width: 70%; text-align: center;
+            text-decoration: none; font-size: 18px; border-radius: 5px;
+        }
+        .close-btn {
+            margin-top: 30px; background: red; color: white; border: none;
+            padding: 10px 20px; font-family: monospace; border-radius: 5px; cursor: pointer;
         }
     </style>
 </head>
@@ -31,7 +46,15 @@
         [ MODE: MINERAL SCAN ]
     </div>
 
-    <button id="flash-btn" class="flash-btn" onclick="toggleFlash()">🔦 FLASH: OFF</button>
+    <button class="hub-btn" onclick="openHub()">⚙️ TOOLBOX HUB</button>
+
+    <div id="hub-menu">
+        <h2 style="color: gold;">⚒️ MASTER TOOLBOX</h2>
+        <a href="#" class="menu-link">🔍 Mineral Scanner (Active)</a>
+        <a href="https://jozzalee83.github.io/YOUR-MANUAL-REPO-NAME" class="menu-link">📖 Equipment Manuals</a>
+        <a href="https://jozzalee83.github.io/YOUR-RC-GAME-REPO-NAME" class="menu-link">🚧 RC Construction Game</a>
+        <button class="close-btn" onclick="closeHub()">CLOSE</button>
+    </div>
 
     <div id="analysis-window">
         <span id="title" style="color:gold; font-weight:bold;">SCANNING PIXELS...</span><br>
@@ -48,38 +71,9 @@
     <canvas id="hidden-canvas" style="display:none;"></canvas>
 
     <script>
-        // --- FLASHLIGHT LOGIC ---
-        let torchOn = false;
-        async function toggleFlash() {
-            const video = document.querySelector('video');
-            if (!video) {
-                alert("Wait for camera to load!");
-                return;
-            }
-            try {
-                // Grab the camera feed
-                const track = video.srcObject.getVideoTracks()[0];
-                const capabilities = track.getCapabilities();
-                
-                // Check if the phone allows web flashlight access
-                if (!capabilities.torch) {
-                    alert("Flashlight API not supported on this browser/device.");
-                    return;
-                }
-                
-                // Toggle the torch
-                torchOn = !torchOn;
-                await track.applyConstraints({ advanced: [{ torch: torchOn }] });
-                
-                // Update button look
-                const btn = document.getElementById('flash-btn');
-                btn.innerText = torchOn ? "🔦 FLASH: ON" : "🔦 FLASH: OFF";
-                btn.style.background = torchOn ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.5)";
-                btn.style.color = torchOn ? "black" : "white";
-            } catch (err) {
-                alert("Could not activate flash: " + err.message);
-            }
-        }
+        // --- HUB LOGIC ---
+        function openHub() { document.getElementById('hub-menu').style.display = 'flex'; }
+        function closeHub() { document.getElementById('hub-menu').style.display = 'none'; }
 
         // --- SCANNER LOGIC ---
         function startScan() {
@@ -108,8 +102,6 @@
                 } else {
                     res.innerHTML = "GENERAL MINERAL DEPOSIT<br>CONTINUE PROSPECTING";
                 }
-                
-                // Auto-hide the popup after 4 seconds
                 setTimeout(() => { win.style.display = 'none'; }, 4000); 
             }, 1500);
         }
