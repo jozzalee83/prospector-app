@@ -1,40 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Prospector AI - Scanner</title>
+    <title>Prospector AI - Vision</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <style>
         .scan-btn {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 80px; height: 80px; border-radius: 50%; border: 4px solid gold;
-            background: rgba(255, 215, 0, 0.3); color: white; font-weight: bold;
-            z-index: 100; cursor: pointer;
+            width: 90px; height: 90px; border-radius: 50%; border: 5px solid #00ff00;
+            background: rgba(0, 255, 0, 0.2); color: #00ff00; font-weight: bold;
+            z-index: 100; font-family: monospace;
         }
-        #result-popup {
-            position: fixed; top: 150px; left: 50%; transform: translateX(-50%);
-            background: rgba(0,0,0,0.8); color: #00ff00; padding: 15px;
-            border: 1px solid #00ff00; font-family: monospace; display: none; z-index: 101;
+        #analysis-window {
+            position: fixed; top: 120px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,20,0,0.9); color: #00ff00; padding: 15px;
+            border: 2px solid #00ff00; font-family: monospace; width: 70%;
+            display: none; z-index: 101; text-align: center;
         }
     </style>
 </head>
 <body style="margin: 0px; overflow: hidden;">
 
     <div id="hud" style="position: fixed; top: 10px; left: 10px; z-index: 10; color: #00ff00; font-family: monospace; background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #00ff00;">
-        SYSTEM: ACTIVE <br>
-        LOC: SHEPPARTON NORTH <br>
-        SENSOR: MULTISPECTRAL
+        [ SENSOR: ACTIVE ] <br>
+        [ MODE: MINERAL SCAN ]
     </div>
 
-    <div id="result-popup">ANALYZING...</div>
+    <div id="analysis-window">
+        <span id="title" style="color:gold; font-weight:bold;">SCANNING PIXELS...</span><br>
+        <span id="result">---</span>
+    </div>
 
-    <button class="scan-btn" onclick="scanSurroundings()">SCAN</button>
+    <button class="scan-btn" onclick="startScan()">SCAN</button>
 
     <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-        <a-ring color="gold" radius-inner="0.4" radius-outer="0.5" position="0 0 -3" rotation="-90 0 0"
-                animation="property: scale; to: 2 2 2; dur: 2000; loop: true; dir: alternate"></a-ring>
+        <a-ring color="#00ff00" radius-inner="0.1" radius-outer="0.15" position="0 0 -1" rotation="0 0 0"></a-ring>
         <a-entity camera></a-entity>
     </a-scene>
+
+    <canvas id="hidden-canvas" style="display:none;"></canvas>
+
+    <script>
+        function startScan() {
+            const win = document.getElementById('analysis-window');
+            const res = document.getElementById('result');
+            win.style.display = 'block';
+            res.innerText = "CAPTURING SPECTRUM...";
+
+            // This grabs a frame from your camera
+            const video = document.querySelector('video');
+            const canvas = document.getElementById('hidden-canvas');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Analysis Logic
+            setTimeout(() => {
+                const pixelData = ctx.getImageData(canvas.width/2, canvas.height/2, 1, 1).data;
+                const r = pixelData[0], g = pixelData[1], b = pixelData[2];
+
+                if (r > 100 && g < 100) {
+                    res.innerHTML = "IRON OXIDE / GOSSAN<br>POTENTIAL: <span style='color:orange;'>HIGH</span>";
+                } else if (r > 180 && g > 180 && b > 180) {
+                    res.innerHTML = "QUARTZ / CALCITE<br>POTENTIAL: <span style='color:white;'>MEDIUM</span>";
+                } else if (g > r && g > b) {
+                    res.innerHTML = "VEGETATION DETECTED<br>ANALYZING PLANT HEALTH...";
+                } else {
+                    res.innerHTML = "GENERAL MINERAL DEPOSIT<br>CONTINUE PROSPECTING";
+                }
+            }, 1500);
+        }
+    </script>
+</body>
+</html>
+
 
     <script>
         function scanSurroundings() {
