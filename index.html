@@ -11,6 +11,11 @@
             background: rgba(0, 255, 0, 0.2); color: #00ff00; font-weight: bold;
             z-index: 100; font-family: monospace; font-size: 16px; transition: 0.3s;
         }
+        .pin-btn {
+            position: fixed; bottom: 45px; right: 20px; z-index: 100;
+            background: rgba(0,0,0,0.8); color: white; border: 2px solid #00ff00;
+            padding: 15px; border-radius: 50%; font-size: 20px; cursor: pointer;
+        }
         .hub-btn {
             position: fixed; top: 10px; right: 10px; z-index: 100;
             background: rgba(0,0,0,0.8); color: gold; border: 2px solid gold;
@@ -22,11 +27,11 @@
             border: 2px solid #00ff00; font-family: monospace; width: 75%;
             display: none; z-index: 101; text-align: center;
         }
-        #hub-menu {
+        #hub-menu, #waypoint-log {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); z-index: 200; display: none;
-            flex-direction: column; align-items: center; justify-content: center;
-            font-family: monospace;
+            flex-direction: column; align-items: center; justify-content: flex-start;
+            font-family: monospace; overflow-y: auto; padding-top: 50px;
         }
         .menu-link {
             background: #111; color: white; border: 1px solid #00ff00;
@@ -35,7 +40,11 @@
         }
         .close-btn {
             margin-top: 30px; background: red; color: white; border: none;
-            padding: 10px 20px; font-family: monospace; border-radius: 5px; cursor: pointer;
+            padding: 10px 20px; font-family: monospace; border-radius: 5px; cursor: pointer; margin-bottom: 50px;
+        }
+        .pin-entry {
+            background: #222; border-left: 5px solid gold; color: white;
+            width: 80%; padding: 10px; margin: 5px 0; text-align: left; font-size: 14px;
         }
     </style>
 </head>
@@ -47,14 +56,22 @@
     </div>
 
     <button class="hub-btn" onclick="openHub()">⚙️ TOOLBOX HUB</button>
+    <button class="pin-btn" onclick="savePin()">📍</button>
 
     <div id="hub-menu">
         <h2 style="color: gold;">⚒️ PROSPECTOR TOOLBOX</h2>
         <a href="#" class="menu-link" onclick="closeHub()">🔍 AI Mineral Scanner (Active)</a>
         <a href="#" class="menu-link" onclick="alert('Geological Map interface coming soon!')">🗺️ Live Geo-Map</a>
-        <a href="#" class="menu-link" onclick="alert('Target logging system coming soon!')">📍 Target Waypoints</a>
+        <a href="#" class="menu-link" onclick="openWaypoints()">📍 Target Waypoints</a>
         <a href="#" class="menu-link" onclick="alert('Claim status checker coming soon!')">📜 Land & Claim Status</a>
         <button class="close-btn" onclick="closeHub()">CLOSE HUB</button>
+    </div>
+
+    <div id="waypoint-log">
+        <h2 style="color: #00ff00;">📍 SAVED TARGETS</h2>
+        <div id="pin-list" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
+        <button class="close-btn" onclick="clearPins()" style="background: darkorange;">CLEAR LOG</button>
+        <button class="close-btn" onclick="closeWaypoints()">BACK</button>
     </div>
 
     <div id="analysis-window">
@@ -76,9 +93,73 @@
         function openHub() { document.getElementById('hub-menu').style.display = 'flex'; }
         function closeHub() { document.getElementById('hub-menu').style.display = 'none'; }
 
+        // --- WAYPOINT LOGIC ---
+        function savePin() {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const lat = position.coords.latitude.toFixed(5);
+                    const lon = position.coords.longitude.toFixed(5);
+                    const time = new Date().toLocaleTimeString();
+                    const date = new Date().toLocaleDateString();
+                    
+                    // Pull old pins, add the new one, save it back
+                    let pins = JSON.parse(localStorage.getItem('prospectorPins')) || [];
+                    pins.push({ lat, lon, time, date });
+                    localStorage.setItem('prospectorPins', JSON.stringify(pins));
+                    
+                    // Flash the button gold to confirm it saved
+                    const btn = document.querySelector('.pin-btn');
+                    btn.style.background = 'gold';
+                    setTimeout(() => { btn.style.background = 'rgba(0,0,0,0.8)'; }, 1000);
+                    
+                }, function(error) {
+                    alert("GPS Error: Could not lock location.");
+                }, { enableHighAccuracy: true });
+            } else {
+                alert("GPS not supported on this device.");
+            }
+        }
+
+        function openWaypoints() {
+            closeHub();
+            const logWindow = document.getElementById('waypoint-log');
+            const pinList = document.getElementById('pin-list');
+            logWindow.style.display = 'flex';
+            
+            // Load pins from memory
+            let pins = JSON.parse(localStorage.getItem('prospectorPins')) || [];
+            pinList.innerHTML = ''; // clear out the list
+            
+            if(pins.length === 0) {
+                pinList.innerHTML = '<p style="color:white;">No targets pinned yet.</p>';
+            } else {
+                // Generate HTML for each saved pin
+                pins.forEach((pin, index) => {
+                    pinList.innerHTML += `
+                        <div class="pin-entry">
+                            <b>Target #${index + 1}</b><br>
+                            Date: ${pin.date} @ ${pin.time}<br>
+                            GPS: ${pin.lat}, ${pin.lon}
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        function closeWaypoints() {
+            document.getElementById('waypoint-log').style.display = 'none';
+            openHub();
+        }
+
+        function clearPins() {
+            if(confirm("Are you sure you want to delete all saved targets?")) {
+                localStorage.removeItem('prospectorPins');
+                openWaypoints(); // Refresh the list
+            }
+        }
+
         // --- SCANNER LOGIC ---
         let isScanning = false;
-
         function startScan() {
             if (isScanning) return; 
             isScanning = true;
@@ -139,7 +220,6 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Offline Engine Active!'))
                 .catch(err => console.log('Offline Engine Failed: ', err));
             });
         }
