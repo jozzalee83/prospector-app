@@ -8,6 +8,9 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
     <style>
         .scan-btn {
             position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
@@ -50,8 +53,6 @@
             background: #222; border-left: 5px solid gold; color: white;
             width: 80%; padding: 10px; margin: 5px 0; text-align: left; font-size: 14px;
         }
-        
-        /* New Map Styles */
         #map-view {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #111; z-index: 150; display: none;
@@ -68,18 +69,18 @@
 
     <div id="hud" style="position: fixed; top: 10px; left: 10px; z-index: 10; color: #00ff00; font-family: monospace; background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #00ff00;">
         [ SENSOR: ACTIVE ] <br>
-        [ MODE: MINERAL SCAN ]
+        [ BRAIN: CUSTOM AI ONLINE ]
     </div>
 
     <button class="hub-btn" onclick="openHub()">⚙️ TOOLBOX HUB</button>
     <button class="pin-btn" onclick="savePin()">📍</button>
 
     <div id="hub-menu">
-        <h2 style="color: gold;">⚒️ PROSPECTOR TOOLBOX</h2>
-        <a href="#" class="menu-link" onclick="closeHub()">🔍 AI Mineral Scanner (Active)</a>
-        <a href="#" class="menu-link" onclick="openMap()">🗺️ Live Geo-Map</a>
+        <h2 style="color: gold;">⚒️ AI PROSPECTOR HUB</h2>
+        <a href="#" class="menu-link" onclick="closeHub()">🔍 AI Vision Scanner (Active)</a>
+        <a href="#" class="menu-link" onclick="openMap()">🗺️ Live Topo Map</a>
         <a href="#" class="menu-link" onclick="openWaypoints()">📍 Target Waypoints</a>
-        <a href="#" class="menu-link" onclick="alert('Claim status checker coming soon!')">📜 Land & Claim Status</a>
+        <a href="#" class="menu-link" onclick="alert('Historical Data AI coming soon!')">🤖 "DigS" Historical AI</a>
         <button class="close-btn" onclick="closeHub()">CLOSE HUB</button>
     </div>
 
@@ -96,8 +97,8 @@
     </div>
 
     <div id="analysis-window">
-        <span id="title" style="color:gold; font-weight:bold;">SCANNING SPECTRUM...</span><br>
-        <span id="result" style="margin-top: 5px; display: block;">---</span>
+        <span id="title" style="color:gold; font-weight:bold;">NEURAL NET SCANNING...</span><br>
+        <span id="result" style="margin-top: 5px; display: block;">Waking up AI...</span>
     </div>
 
     <button id="main-scan-btn" class="scan-btn" onclick="startScan()">SCAN</button>
@@ -110,61 +111,37 @@
     <canvas id="hidden-canvas" style="display:none;"></canvas>
 
     <script>
-        // --- HUB LOGIC ---
         function openHub() { document.getElementById('hub-menu').style.display = 'flex'; }
         function closeHub() { document.getElementById('hub-menu').style.display = 'none'; }
 
-        // --- MAP LOGIC ---
         let geoMap = null;
         let userMarker = null;
 
         function openMap() {
             closeHub();
             document.getElementById('map-view').style.display = 'block';
-
-            // Build map if it hasn't been built yet
             if (!geoMap) {
                 geoMap = L.map('map-container').setView([-36.38, 145.40], 10); 
-                
-                // Topo map layer
-                L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 17,
-                    attribution: 'Map data: © OpenStreetMap | Style: © OpenTopoMap'
-                }).addTo(geoMap);
+                L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 }).addTo(geoMap);
             }
-
-            // Fix visual glitches from unhiding
             setTimeout(() => { geoMap.invalidateSize(); }, 200);
-
-            // Fetch live location and drop pins
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(position => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
-                    geoMap.setView([lat, lon], 14); // Zoom in on your location
-                    
-                    // Mark current location
+                    geoMap.setView([lat, lon], 14); 
                     if (userMarker) geoMap.removeLayer(userMarker);
                     userMarker = L.marker([lat, lon]).addTo(geoMap).bindPopup("<b>You are here</b>").openPopup();
                     
-                    // Plot all saved targets
                     let pins = JSON.parse(localStorage.getItem('prospectorPins')) || [];
                     pins.forEach((pin, index) => {
-                        L.circleMarker([pin.lat, pin.lon], {
-                            color: 'gold', fillColor: '#ffcc00', fillOpacity: 0.8, radius: 8
-                        }).addTo(geoMap).bindPopup(`<b>Target #${index + 1}</b><br>${pin.time}`);
+                        L.circleMarker([pin.lat, pin.lon], { color: 'gold', fillColor: '#ffcc00', fillOpacity: 0.8, radius: 8 }).addTo(geoMap).bindPopup(`<b>Target #${index + 1}</b><br>${pin.time}`);
                     });
-                }, err => {
-                    alert("GPS Error. Map needs location access.");
-                }, { enableHighAccuracy: true });
+                }, err => { alert("GPS Error."); }, { enableHighAccuracy: true });
             }
         }
+        function closeMap() { document.getElementById('map-view').style.display = 'none'; }
 
-        function closeMap() {
-            document.getElementById('map-view').style.display = 'none';
-        }
-
-        // --- WAYPOINT LOGIC ---
         function savePin() {
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(function(position) {
@@ -178,15 +155,9 @@
                     localStorage.setItem('prospectorPins', JSON.stringify(pins));
                     
                     const btn = document.querySelector('.pin-btn');
-                    btn.style.background = 'gold';
-                    btn.style.color = 'black';
-                    setTimeout(() => { 
-                        btn.style.background = 'rgba(0,0,0,0.8)'; 
-                        btn.style.color = 'white';
-                    }, 1000);
-                }, function(error) {
-                    alert("GPS Error: Could not lock location.");
-                }, { enableHighAccuracy: true });
+                    btn.style.background = 'gold'; btn.style.color = 'black';
+                    setTimeout(() => { btn.style.background = 'rgba(0,0,0,0.8)'; btn.style.color = 'white'; }, 1000);
+                }, function(error) {}, { enableHighAccuracy: true });
             }
         }
 
@@ -199,37 +170,38 @@
             let pins = JSON.parse(localStorage.getItem('prospectorPins')) || [];
             pinList.innerHTML = ''; 
             
-            if(pins.length === 0) {
-                pinList.innerHTML = '<p style="color:white;">No targets pinned yet.</p>';
-            } else {
+            if(pins.length === 0) { pinList.innerHTML = '<p style="color:white;">No targets pinned yet.</p>'; } 
+            else {
                 pins.forEach((pin, index) => {
-                    pinList.innerHTML += `
-                        <div class="pin-entry">
-                            <b>Target #${index + 1}</b><br>
-                            Date: ${pin.date} @ ${pin.time}<br>
-                            GPS: ${pin.lat}, ${pin.lon}
-                        </div>
-                    `;
+                    pinList.innerHTML += `<div class="pin-entry"><b>Target #${index + 1}</b><br>Date: ${pin.date} @ ${pin.time}<br>GPS: ${pin.lat}, ${pin.lon}</div>`;
                 });
             }
         }
+        function closeWaypoints() { document.getElementById('waypoint-log').style.display = 'none'; openHub(); }
+        function clearPins() { if(confirm("Delete all saved targets?")) { localStorage.removeItem('prospectorPins'); openWaypoints(); } }
+    </script>
 
-        function closeWaypoints() {
-            document.getElementById('waypoint-log').style.display = 'none';
-            openHub();
-        }
+    <script>
+        // YOUR CUSTOM MODEL LINK
+        const URL = "https://teachablemachine.withgoogle.com/models/UcD0VeWl2/";
+        let model, maxPredictions;
 
-        function clearPins() {
-            if(confirm("Delete all saved targets?")) {
-                localStorage.removeItem('prospectorPins');
-                openWaypoints(); 
+        window.addEventListener('load', async () => {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            try {
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                console.log("AI Model Loaded Successfully!");
+            } catch(e) {
+                console.log("Failed to load AI model: " + e);
             }
-        }
+        });
 
-        // --- SCANNER LOGIC ---
         let isScanning = false;
-        function startScan() {
-            if (isScanning) return; 
+        
+        async function startScan() {
+            if (isScanning || !model) return; 
             isScanning = true;
             
             const win = document.getElementById('analysis-window');
@@ -238,43 +210,45 @@
             
             btn.style.opacity = '0.3'; 
             win.style.display = 'block';
-            res.innerText = "CAPTURING LIGHT SIGNATURE...";
+            res.innerText = "RUNNING NEURAL NET...";
 
             const video = document.querySelector('video');
             const canvas = document.getElementById('hidden-canvas');
             
             if (!video || video.readyState !== 4) {
-                res.innerHTML = "<span style='color:red;'>CAMERA FEED LOST</span><br>RE-ESTABLISHING...";
+                res.innerHTML = "<span style='color:red;'>CAMERA FEED LOST</span>";
                 setTimeout(resetScanner, 2000);
                 return;
             }
 
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d', { willReadFrequently: true }); 
+            const ctx = canvas.getContext('2d'); 
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            setTimeout(() => {
-                const pixelData = ctx.getImageData(canvas.width/2, canvas.height/2, 1, 1).data;
-                const r = pixelData[0], g = pixelData[1], b = pixelData[2];
-                const brightness = (r + g + b) / 3;
-
-                if (brightness < 40) {
-                    res.innerHTML = "AREA TOO DARK<br><span style='color:grey;'>USE FLASHLIGHT OR REPOSITION</span>";
-                } else if (r > 150 && g > 120 && b < 100) {
-                    res.innerHTML = "SIGNATURE: <span style='color:gold;'>NATIVE GOLD / SULPHIDES</span><br>POTENTIAL: <span style='color:red; font-weight:bold;'>EXTREME</span>";
-                } else if (r > 120 && g < 90 && b < 90) {
-                    res.innerHTML = "SIGNATURE: <span style='color:orange;'>IRONSTONE / GOSSAN</span><br>POTENTIAL: <span style='color:orange;'>HIGH INDICATOR</span>";
-                } else if (r > 200 && g > 200 && b > 200) {
-                    res.innerHTML = "SIGNATURE: <span style='color:white;'>QUARTZ VEIN</span><br>POTENTIAL: <span style='color:yellow;'>MEDIUM INDICATOR</span>";
-                } else if (g > r && g > 100 && b < 100) {
-                    res.innerHTML = "SIGNATURE: <span style='color:#00ff00;'>GREENSTONE / COPPER TRACE</span><br>POTENTIAL: MEDIUM";
-                } else {
-                    res.innerHTML = `BASE ROCK DETECTED<br><span style='font-size:12px; color:grey;'>Raw RGB Data: R${r} G${g} B${b}</span>`;
+            // FEED THE FRAME TO YOUR AI BRAIN
+            const prediction = await model.predict(canvas);
+            
+            // Find the highest probability match
+            let bestMatch = "";
+            let highestProb = 0;
+            for (let i = 0; i < maxPredictions; i++) {
+                if (prediction[i].probability > highestProb) {
+                    highestProb = prediction[i].probability;
+                    bestMatch = prediction[i].className;
                 }
-                
-                setTimeout(resetScanner, 4000); 
-            }, 1200);
+            }
+
+            let confidence = Math.round(highestProb * 100);
+
+            // Dynamically show whatever you named the class
+            if (bestMatch.toLowerCase().includes("dirt") || bestMatch.toLowerCase().includes("background")) {
+                res.innerHTML = `BASE MATERIAL / DIRT<br><span style='color:grey;'>CONFIDENCE: ${confidence}%</span>`;
+            } else {
+                res.innerHTML = `TARGET: <span style='color:gold; font-size:18px;'>${bestMatch.toUpperCase()}</span><br>CONFIDENCE: ${confidence}%`;
+            }
+            
+            setTimeout(resetScanner, 4000); 
 
             function resetScanner() {
                 win.style.display = 'none';
